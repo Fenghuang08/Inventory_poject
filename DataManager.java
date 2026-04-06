@@ -14,14 +14,27 @@ public class DataManager {
         DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
     private static final String FILE_NAME = "inventaire_data.json";
 
+    // ── Chemin robuste : toujours à côté du .exe ou du .jar ─────────────────
     private static File getDataFile() {
+        // Méthode 1 : dossier courant (fonctionne avec .exe Launch4j)
+        File currentDir = new File(System.getProperty("user.dir"));
+        File f1 = new File(currentDir, FILE_NAME);
+
+        // Méthode 2 : dossier du .jar
         try {
             File jar = new File(DataManager.class.getProtectionDomain()
                 .getCodeSource().getLocation().toURI());
-            File dir = jar.isFile() ? jar.getParentFile() : new File(".");
-            return new File(dir, FILE_NAME);
+            File jarDir = jar.isFile() ? jar.getParentFile() : jar;
+            File f2 = new File(jarDir, FILE_NAME);
+
+            // Priorité : si f2 existe déjà, l'utiliser
+            if (f2.exists()) return f2;
+            // Sinon si f1 existe, l'utiliser
+            if (f1.exists()) return f1;
+            // Sinon : utiliser le dossier du .jar par défaut
+            return f2;
         } catch (Exception e) {
-            return new File(FILE_NAME);
+            return f1;
         }
     }
 
@@ -104,25 +117,36 @@ public class DataManager {
         }
         json.append("  ]\n}\n");
 
+        // Écriture avec log pour debug
         File dataFile = getDataFile();
-        File backupFile = new File(dataFile.getParent(), FILE_NAME + ".bak");
+        System.out.println("Sauvegarde vers : " + dataFile.getAbsolutePath());
+        File backupFile = new File(dataFile.getParentFile(), FILE_NAME + ".bak");
         try {
             if (dataFile.exists())
-                Files.copy(dataFile.toPath(), backupFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            try (PrintWriter pw = new PrintWriter(new FileWriter(dataFile, StandardCharsets.UTF_8))) {
+                Files.copy(dataFile.toPath(), backupFile.toPath(),
+                    StandardCopyOption.REPLACE_EXISTING);
+            try (PrintWriter pw = new PrintWriter(
+                    new FileWriter(dataFile, StandardCharsets.UTF_8))) {
                 pw.print(json);
             }
+            System.out.println("Sauvegarde OK (" + dataFile.length() + " octets)");
         } catch (IOException e) {
-            System.err.println("Erreur sauvegarde JSON : " + e.getMessage());
+            System.err.println("Erreur sauvegarde : " + e.getMessage());
         }
     }
 
     // ── Chargement ───────────────────────────────────────────────────────────
     public static boolean load(ProductController pc, UserController uc) {
         File dataFile = getDataFile();
-        if (!dataFile.exists()) return false;
+        System.out.println("Chargement depuis : " + dataFile.getAbsolutePath());
+        if (!dataFile.exists()) {
+            System.out.println("Fichier introuvable, demarrage avec donnees par defaut.");
+            return false;
+        }
         try {
-            String content = new String(Files.readAllBytes(dataFile.toPath()), StandardCharsets.UTF_8);
+            String content = new String(Files.readAllBytes(dataFile.toPath()),
+                StandardCharsets.UTF_8);
+            System.out.println("Fichier lu : " + content.length() + " caracteres");
 
             List<String> cats = parseStringArray(content, "categories");
             pc.clearAll();
@@ -148,10 +172,12 @@ public class DataManager {
                 m.setProductId(parseInt(block, "productId"));
                 m.setProductName(parseStr(block, "productName"));
                 m.setProductReference(parseStr(block, "productReference"));
-                m.setType("OUT".equals(parseStr(block, "type")) ? Movement.Type.OUT : Movement.Type.IN);
+                m.setType("OUT".equals(parseStr(block, "type"))
+                    ? Movement.Type.OUT : Movement.Type.IN);
                 m.setQuantity(parseInt(block, "quantity"));
                 String dt = parseStr(block, "dateTime");
-                m.setDateTime(dt.isEmpty() ? LocalDateTime.now() : LocalDateTime.parse(dt, DT_FMT));
+                m.setDateTime(dt.isEmpty() ? LocalDateTime.now()
+                    : LocalDateTime.parse(dt, DT_FMT));
                 m.setUsername(parseStr(block, "username"));
                 m.setNote(parseStr(block, "note"));
                 pc.loadMovement(m);
@@ -172,9 +198,12 @@ public class DataManager {
                 u.setLastLogin(ll.isEmpty() ? null : LocalDateTime.parse(ll, DT_FMT));
                 uc.loadUser(u);
             }
+
+            System.out.println("Chargement OK : " + pc.getAllProducts().size()
+                + " produits, " + uc.getAllUsers().size() + " utilisateurs");
             return true;
         } catch (Exception e) {
-            System.err.println("Erreur chargement JSON : " + e.getMessage());
+            System.err.println("Erreur chargement : " + e.getMessage());
             return false;
         }
     }
@@ -208,7 +237,10 @@ public class DataManager {
             if (c == '{') { if (depth == 0) objStart = i; depth++; }
             else if (c == '}') {
                 depth--;
-                if (depth == 0 && objStart >= 0) { result.add(json.substring(objStart, i + 1)); objStart = -1; }
+                if (depth == 0 && objStart >= 0) {
+                    result.add(json.substring(objStart, i + 1));
+                    objStart = -1;
+                }
             } else if (c == ']' && depth == 0) break;
         }
         return result;
@@ -242,7 +274,8 @@ public class DataManager {
             if (Character.isDigit(c) || c == '-') sb.append(c);
             else if (sb.length() > 0) break;
         }
-        try { return Integer.parseInt(sb.toString().trim()); } catch (Exception e) { return 0; }
+        try { return Integer.parseInt(sb.toString().trim()); }
+        catch (Exception e) { return 0; }
     }
 
     private static boolean parseBool(String block, String key) {
@@ -256,14 +289,16 @@ public class DataManager {
 
     private static String jStr(String s) {
         if (s == null) return "\"\"";
-        return "\"" + s.replace("\\","\\\\").replace("\"","\\\"")
-                       .replace("\n","\\n").replace("\r","\\r") + "\"";
+        return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"")
+                       .replace("\n", "\\n").replace("\r", "\\r") + "\"";
     }
 
     private static String jsonUnescape(String s) {
-        return s.replace("\\\"","\"").replace("\\n","\n")
-                .replace("\\r","\r").replace("\\\\","\\");
+        return s.replace("\\\"", "\"").replace("\\n", "\n")
+                .replace("\\r", "\r").replace("\\\\", "\\");
     }
 
-    public static String getDataFilePath() { return getDataFile().getAbsolutePath(); }
+    public static String getDataFilePath() {
+        return getDataFile().getAbsolutePath();
+    }
 }
