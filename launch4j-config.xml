@@ -1,0 +1,10 @@
+<launch4jConfig>
+  <dontWrapJar>false</dontWrapJar>
+  <headerType>gui</headerType>
+  <jar>C:\Users\redfe\Desktop\Projet Perso ICT\Inventaire\out\inventaire.jar</jar>
+  <outfile>C:\Users\redfe\Desktop\Projet Perso ICT\Inventaire\out\Inventaire-v2.exe</outfile>
+  <errTitle>Inventaire-v2</errTitle>
+  <jre>
+    <minVersion>17.0.0</minVersion>
+  </jre>
+</launch4jConfig>
