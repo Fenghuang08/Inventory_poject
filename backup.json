@@ -1,0 +1,100 @@
+{
+  "categories": [
+    "Fournitures",
+    "Informatique",
+    "Papeterie",
+    "GPI48"
+  ],
+  "products": [
+    {
+      "id": 1,
+      "reference": "REF-001",
+      "name": "Stylos Bic",
+      "description": "",
+      "category": "Fournitures",
+      "quantity": 150,
+      "minQuantity": 20,
+      "price": 0.5,
+      "status": "Actif"
+    },
+    {
+      "id": 2,
+      "reference": "REF-002",
+      "name": "Ramette A4",
+      "description": "",
+      "category": "Papeterie",
+      "quantity": 40,
+      "minQuantity": 10,
+      "price": 4.99,
+      "status": "Actif"
+    },
+    {
+      "id": 3,
+      "reference": "REF-003",
+      "name": "Cle USB 32 Go",
+      "description": "",
+      "category": "Informatique",
+      "quantity": 8,
+      "minQuantity": 5,
+      "price": 12.9,
+      "status": "Actif"
+    },
+    {
+      "id": 4,
+      "reference": "REF-004",
+      "name": "Agrafeuse",
+      "description": "",
+      "category": "Fournitures",
+      "quantity": 3,
+      "minQuantity": 5,
+      "price": 8.5,
+      "status": "Actif"
+    },
+    {
+      "id": 5,
+      "reference": "REF-005",
+      "name": "Toner imprimante",
+      "description": "",
+      "category": "Informatique",
+      "quantity": 0,
+      "minQuantity": 2,
+      "price": 45.0,
+      "status": "Inactif"
+    },
+    {
+      "id": 6,
+      "reference": "REF-006",
+      "name": "RedGun",
+      "description": "GPI48 entrainement",
+      "category": "GPI48",
+      "quantity": 0,
+      "minQuantity": 5,
+      "price": 0.0,
+      "status": "Actif"
+    }
+  ],
+  "movements": [
+  ],
+  "users": [
+    {
+      "id": 1,
+      "username": "admin",
+      "fullName": "Administrateur",
+      "email": "admin@inventaire.fr",
+      "passwordHash": "admin123",
+      "role": "ADMIN",
+      "active": true,
+      "lastLogin": ""
+    },
+    {
+      "id": 2,
+      "username": "jdupont",
+      "fullName": "Jean Dupont",
+      "email": "jdupont@inventaire.fr",
+      "passwordHash": "pass123",
+      "role": "GESTIONNAIRE",
+      "active": true,
+      "lastLogin": ""
+    }
+  ]
+}

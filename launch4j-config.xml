@@ -3,6 +3,7 @@
   <headerType>gui</headerType>
   <jar>C:\Users\redfe\Desktop\Projet Perso ICT\Inventaire\out\inventaire.jar</jar>
   <outfile>C:\Users\redfe\Desktop\Projet Perso ICT\Inventaire\out\Inventaire-v2.exe</outfile>
+<icon>C:\Users\redfe\Desktop\Projet Perso ICT\Inventaire\Logo_RED.ico</icon>
   <errTitle>Inventaire-v2</errTitle>
   <jre>
     <minVersion>17.0.0</minVersion>

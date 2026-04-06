@@ -5,9 +5,6 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.util.List;
 
-/**
- * Dialogue de création / modification d'un produit.
- */
 public class ProductDialog extends JDialog {
 
     private final JTextField        tfReference;
@@ -16,7 +13,7 @@ public class ProductDialog extends JDialog {
     private final JComboBox<String> cbCategory;
     private final JSpinner          spQuantity;
     private final JSpinner          spMinQuantity;
-    private final JSpinner          spPrice;
+    private final JTextField        tfStorageLocation;  // ancien : spPrice
     private final JComboBox<String> cbStatus;
 
     private boolean saved = false;
@@ -28,19 +25,29 @@ public class ProductDialog extends JDialog {
         this.controller  = controller;
         this.editProduct = product;
 
-        tfReference   = new JTextField(20);
-        tfName        = new JTextField(20);
-        taDescription = new JTextArea(3, 20);
+        // ── Référence auto ───────────────────────────────────────────────────
+        tfReference = new JTextField(20);
+        if (product == null) {
+            tfReference.setText(controller.generateNextReference());
+            tfReference.setEditable(false);
+            tfReference.setBackground(new Color(240, 240, 240));
+            tfReference.setToolTipText("Reference generee automatiquement");
+        } else {
+            tfReference.setText(product.getReference());
+        }
+
+        tfName            = new JTextField(20);
+        taDescription     = new JTextArea(3, 20);
         taDescription.setLineWrap(true); taDescription.setWrapStyleWord(true);
 
         List<String> categories = controller.getAllCategories();
         cbCategory = new JComboBox<>(categories.toArray(new String[0]));
         cbCategory.setEditable(true);
 
-        spQuantity    = new JSpinner(new SpinnerNumberModel(0, 0, 999999, 1));
-        spMinQuantity = new JSpinner(new SpinnerNumberModel(5, 0, 999999, 1));
-        spPrice       = new JSpinner(new SpinnerNumberModel(0.0, 0.0, 9999999.0, 0.01));
-        ((JSpinner.NumberEditor) spPrice.getEditor()).getFormat().applyPattern("#,##0.00");
+        spQuantity        = new JSpinner(new SpinnerNumberModel(0, 0, 999999, 1));
+        spMinQuantity     = new JSpinner(new SpinnerNumberModel(5, 0, 999999, 1));
+        tfStorageLocation = new JTextField(20);
+        tfStorageLocation.putClientProperty("JTextField.placeholderText", "Ex: Etagere A3, Armoire 2...");
 
         cbStatus = new JComboBox<>(new String[]{
             Product.STATUS_ACTIVE, Product.STATUS_INACTIVE, Product.STATUS_DISCONTINUED
@@ -55,7 +62,7 @@ public class ProductDialog extends JDialog {
         if (editProduct != null) populateForm(editProduct);
 
         pack();
-        setMinimumSize(new Dimension(420, 380));
+        setMinimumSize(new Dimension(440, 400));
         setLocationRelativeTo(parent);
         setResizable(false);
     }
@@ -66,8 +73,25 @@ public class ProductDialog extends JDialog {
         c.insets = new Insets(5, 6, 5, 6);
         c.fill = GridBagConstraints.HORIZONTAL;
         int row = 0;
-        addRow(p, c, row++, "Référence * :",      tfReference);
-        addRow(p, c, row++, "Nom * :",             tfName);
+
+        // Référence avec badge AUTO
+        c.gridx = 0; c.gridy = row; c.weightx = 0; p.add(lbl("Reference :"), c);
+        c.gridx = 1; c.weightx = 1;
+        JPanel refPanel = new JPanel(new BorderLayout(6, 0));
+        refPanel.add(tfReference, BorderLayout.CENTER);
+        if (editProduct == null) {
+            JLabel autoLabel = new JLabel("AUTO");
+            autoLabel.setFont(autoLabel.getFont().deriveFont(Font.BOLD, 10f));
+            autoLabel.setForeground(Color.WHITE);
+            autoLabel.setBackground(new Color(70, 130, 180));
+            autoLabel.setOpaque(true);
+            autoLabel.setBorder(BorderFactory.createEmptyBorder(2, 6, 2, 6));
+            refPanel.add(autoLabel, BorderLayout.EAST);
+        }
+        p.add(refPanel, c); row++;
+
+        addRow(p, c, row++, "Nom * :",              tfName);
+
         c.gridx = 0; c.gridy = row; c.weightx = 0;
         p.add(lbl("Description :"), c);
         c.gridx = 1; c.weightx = 1;
@@ -75,11 +99,12 @@ public class ProductDialog extends JDialog {
             JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
             JScrollPane.HORIZONTAL_SCROLLBAR_NEVER), c);
         row++;
-        addRow(p, c, row++, "Catégorie :",         cbCategory);
-        addRow(p, c, row++, "Quantité initiale :",  spQuantity);
-        addRow(p, c, row++, "Quantité minimale :",  spMinQuantity);
-        addRow(p, c, row++, "Prix (€) :",           spPrice);
-        addRow(p, c, row,   "Statut :",             cbStatus);
+
+        addRow(p, c, row++, "Categorie :",          cbCategory);
+        addRow(p, c, row++, "Quantite initiale :",   spQuantity);
+        addRow(p, c, row++, "Quantite minimale :",   spMinQuantity);
+        addRow(p, c, row++, "Lieu de stockage :",    tfStorageLocation);  // ← ICI
+        addRow(p, c, row,   "Statut :",              cbStatus);
         return p;
     }
 
@@ -97,12 +122,13 @@ public class ProductDialog extends JDialog {
     private JPanel buildButtonBar() {
         JPanel bar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 8));
         bar.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Color.LIGHT_GRAY));
-        JButton btnSave   = new JButton(editProduct == null ? "➕ Créer" : "✅ Enregistrer");
+        JButton btnSave   = new JButton(editProduct == null ? "Creer" : "Enregistrer");
         JButton btnCancel = new JButton("Annuler");
-        btnSave.setBackground(new Color(46, 139, 87));
-        btnSave.setForeground(Color.WHITE);
         btnSave.setOpaque(true);
         btnSave.setContentAreaFilled(true);
+        btnSave.setBorderPainted(false);
+        btnSave.setBackground(new Color(46, 139, 87));
+        btnSave.setForeground(Color.WHITE);
         btnSave.setFont(btnSave.getFont().deriveFont(Font.BOLD));
         btnSave.addActionListener(e -> save());
         btnCancel.addActionListener(e -> dispose());
@@ -117,17 +143,23 @@ public class ProductDialog extends JDialog {
         cbCategory.setSelectedItem(p.getCategory());
         spQuantity.setValue(p.getQuantity());
         spMinQuantity.setValue(p.getMinQuantity());
-        spPrice.setValue(p.getPrice());
+        tfStorageLocation.setText(p.getStorageLocation());
         cbStatus.setSelectedItem(p.getStatus());
     }
 
     private void save() {
         String ref  = tfReference.getText().trim();
         String name = tfName.getText().trim();
-        if (ref.isEmpty() || name.isEmpty()) {
+        if (name.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Le nom est obligatoire.",
+                "Champ manquant", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if (controller.referenceExists(ref) &&
+                (editProduct == null || !ref.equalsIgnoreCase(editProduct.getReference()))) {
             JOptionPane.showMessageDialog(this,
-                "La référence et le nom sont obligatoires.",
-                "Champs manquants", JOptionPane.WARNING_MESSAGE);
+                "La reference " + ref + " existe deja.",
+                "Reference en double", JOptionPane.WARNING_MESSAGE);
             return;
         }
         Product p = editProduct != null ? editProduct : new Product();
@@ -138,7 +170,7 @@ public class ProductDialog extends JDialog {
             ? cbCategory.getSelectedItem().toString().trim() : "");
         p.setQuantity((int) spQuantity.getValue());
         p.setMinQuantity((int) spMinQuantity.getValue());
-        p.setPrice(((Number) spPrice.getValue()).doubleValue());
+        p.setStorageLocation(tfStorageLocation.getText().trim());
         p.setStatus((String) cbStatus.getSelectedItem());
 
         if (editProduct == null) controller.addProduct(p);

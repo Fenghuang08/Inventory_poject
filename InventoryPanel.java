@@ -8,75 +8,54 @@ import java.awt.event.*;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Panneau inventaire avec onglets dynamiques par catégorie.
- * - Onglet "Tout" : tous les produits
- * - Un onglet par catégorie
- * - Bouton "+" pour créer une nouvelle catégorie
- * - Clic droit sur un onglet pour le renommer ou supprimer
- */
 public class InventoryPanel extends JPanel {
 
     private static final String TAB_ALL = "Tout";
 
     private static final String[] COLUMNS = {
-        "ID", "Référence", "Nom", "Catégorie", "Quantité", "Qté min.", "Prix (€)", "Statut"
+        "ID", "Reference", "Nom", "Categorie", "Quantite", "Qte min.", "Lieu de stockage", "Statut"
     };
 
-    // ── Composants principaux ────────────────────────────────────────────────
     private final JTabbedPane categoryTabs;
     private final JLabel statusLabel;
     private final ProductController productController;
 
-    // ────────────────────────────────────────────────────────────────────────
     public InventoryPanel(ProductController productController) {
         this.productController = productController;
         setLayout(new BorderLayout(0, 8));
         setBorder(BorderFactory.createEmptyBorder(12, 14, 12, 14));
 
-        // ── Barre d'outils globale ───────────────────────────────────────────
         add(buildGlobalToolbar(), BorderLayout.NORTH);
 
-        // ── Onglets ─────────────────────────────────────────────────────────
         categoryTabs = new JTabbedPane();
         categoryTabs.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
         add(categoryTabs, BorderLayout.CENTER);
 
-        // ── Barre de statut ──────────────────────────────────────────────────
         statusLabel = new JLabel(" ");
         statusLabel.setFont(statusLabel.getFont().deriveFont(Font.ITALIC, 11f));
         add(statusLabel, BorderLayout.SOUTH);
 
-        // Initialiser les onglets
         rebuildTabs();
     }
 
-    // ── Construction des onglets ─────────────────────────────────────────────
+    // ── Onglets ──────────────────────────────────────────────────────────────
     private void rebuildTabs() {
         String selectedTitle = getCurrentTabTitle();
         categoryTabs.removeAll();
 
-        // Onglet "Tout"
         categoryTabs.addTab(TAB_ALL, buildTabPanel(null));
-
-        // Un onglet par catégorie
-        for (String cat : productController.getAllCategories()) {
+        for (String cat : productController.getAllCategories())
             addCategoryTab(cat);
-        }
 
-        // Bouton "+" (onglet factice)
         categoryTabs.addTab("+", new JPanel());
         int plusIndex = categoryTabs.getTabCount() - 1;
         categoryTabs.setTabComponentAt(plusIndex, buildPlusButton());
 
-        // Restaurer la sélection
         restoreTab(selectedTitle);
 
-        // Listener pour intercepter le clic sur "+"
         categoryTabs.addChangeListener(e -> {
             int idx = categoryTabs.getSelectedIndex();
             if (idx == categoryTabs.getTabCount() - 1) {
-                // Clic sur "+" → revenir à l'onglet précédent et ouvrir dialog
                 categoryTabs.setSelectedIndex(Math.max(0, idx - 1));
                 createNewCategory();
             } else {
@@ -84,15 +63,12 @@ public class InventoryPanel extends JPanel {
             }
         });
 
-        // Clic droit sur les onglets
         categoryTabs.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mousePressed(MouseEvent e) {
+            @Override public void mousePressed(MouseEvent e) {
                 if (SwingUtilities.isRightMouseButton(e)) {
                     int idx = categoryTabs.indexAtLocation(e.getX(), e.getY());
-                    if (idx > 0 && idx < categoryTabs.getTabCount() - 1) {
+                    if (idx > 0 && idx < categoryTabs.getTabCount() - 1)
                         showTabContextMenu(e, idx);
-                    }
                 }
             }
         });
@@ -101,7 +77,7 @@ public class InventoryPanel extends JPanel {
     }
 
     private void addCategoryTab(String category) {
-        int insertAt = categoryTabs.getTabCount(); // avant le "+"
+        int insertAt = categoryTabs.getTabCount();
         categoryTabs.insertTab(category, null, buildTabPanel(category), category, insertAt);
     }
 
@@ -109,15 +85,12 @@ public class InventoryPanel extends JPanel {
     private JPanel buildTabPanel(String categoryFilter) {
         JPanel panel = new JPanel(new BorderLayout(0, 6));
         panel.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
-
-        // Toolbar de l'onglet
         panel.add(buildTabToolbar(categoryFilter), BorderLayout.NORTH);
 
-        // Tableau
         DefaultTableModel model = new DefaultTableModel(COLUMNS, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
             @Override public Class<?> getColumnClass(int c) {
-                return switch (c) { case 0, 4, 5 -> Integer.class; case 6 -> Double.class; default -> String.class; };
+                return (c == 0 || c == 4 || c == 5) ? Integer.class : String.class;
             }
         };
 
@@ -129,25 +102,13 @@ public class InventoryPanel extends JPanel {
         table.setRowSorter(sorter);
         table.getColumnModel().getColumn(7).setCellRenderer(new StatusCellRenderer());
 
-        int[] widths = {40, 100, 180, 120, 70, 70, 80, 90};
+        int[] widths = {40, 100, 180, 120, 70, 70, 160, 90};
         for (int i = 0; i < widths.length; i++)
             table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
 
         panel.add(new JScrollPane(table), BorderLayout.CENTER);
-
-        // Champ de recherche dans l'onglet
-        JTextField search = new JTextField(16);
-        search.addKeyListener(new KeyAdapter() {
-            @Override public void keyReleased(KeyEvent e) {
-                String t = search.getText().trim();
-                sorter.setRowFilter(t.isEmpty() ? null : RowFilter.regexFilter("(?i)" + t, 1, 2, 3));
-            }
-        });
-
-        // Stocker les références pour le refresh
-        panel.putClientProperty("table",  table);
-        panel.putClientProperty("model",  model);
-        panel.putClientProperty("search", search);
+        panel.putClientProperty("table",    table);
+        panel.putClientProperty("model",    model);
         panel.putClientProperty("category", categoryFilter);
 
         fillTable(model, categoryFilter);
@@ -171,26 +132,18 @@ public class InventoryPanel extends JPanel {
         left.add(btnMove); left.add(btnRefresh);
 
         JTextField search = new JTextField(16);
-        search.putClientProperty("JTextField.placeholderText", "Rechercher…");
+        search.putClientProperty("JTextField.placeholderText", "Rechercher...");
         right.add(new JLabel("Rechercher :")); right.add(search);
 
         bar.add(left, BorderLayout.WEST);
         bar.add(right, BorderLayout.EAST);
 
-        // Les actions utiliseront le panneau parent via SwingUtilities
-        btnAdd.addActionListener(e -> openProductDialog(null, categoryFilter, search));
-        btnEdit.addActionListener(e -> {
-            Product p = getSelectedProductFromCurrentTab();
-            if (p != null) openProductDialog(p, categoryFilter, search);
-        });
-        btnDelete.addActionListener(e -> deleteSelectedProduct(search));
-        btnMove.addActionListener(e -> {
-            Product p = getSelectedProductFromCurrentTab();
-            if (p != null) openMovementDialog(p, search);
-        });
+        btnAdd.addActionListener(e    -> openProductDialog(null));
+        btnEdit.addActionListener(e   -> { Product p = getSelectedProduct(); if (p != null) openProductDialog(p); });
+        btnDelete.addActionListener(e -> deleteSelectedProduct());
+        btnMove.addActionListener(e   -> { Product p = getSelectedProduct(); if (p != null) openMovementDialog(p); });
         btnRefresh.addActionListener(e -> refreshCurrentTab());
 
-        // Lier le champ de recherche au sorter du tableau
         search.addKeyListener(new KeyAdapter() {
             @Override public void keyReleased(KeyEvent e) {
                 JPanel tabPanel = getCurrentTabPanel();
@@ -199,128 +152,109 @@ public class InventoryPanel extends JPanel {
                 if (table == null) return;
                 String t = search.getText().trim();
                 ((TableRowSorter<?>) table.getRowSorter())
-                    .setRowFilter(t.isEmpty() ? null : RowFilter.regexFilter("(?i)" + t, 1, 2, 3));
+                    .setRowFilter(t.isEmpty() ? null : RowFilter.regexFilter("(?i)" + t, 1, 2, 3, 6));
             }
         });
 
         return bar;
     }
 
-    // ── Toolbar global (au-dessus des onglets) ───────────────────────────────
+    // ── Toolbar global ───────────────────────────────────────────────────────
     private JPanel buildGlobalToolbar() {
         JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
         bar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Color.LIGHT_GRAY));
-
-        JButton btnNewCat = btn("+ Nouvelle catégorie", new Color(70, 100, 160));
+        JButton btnNewCat = btn("+ Nouvelle categorie", new Color(70, 100, 160));
         btnNewCat.addActionListener(e -> createNewCategory());
         bar.add(btnNewCat);
-
-        JLabel hint = new JLabel("  Clic droit sur un onglet pour le renommer ou supprimer");
+        JLabel hint = new JLabel("  Clic droit sur un onglet pour renommer ou supprimer");
         hint.setFont(hint.getFont().deriveFont(Font.ITALIC, 11f));
         hint.setForeground(Color.GRAY);
         bar.add(hint);
-
         return bar;
     }
 
-    // ── Bouton "+" dans les onglets ──────────────────────────────────────────
     private JLabel buildPlusButton() {
-        JLabel plus = new JLabel("  ＋  ");
+        JLabel plus = new JLabel("  +  ");
         plus.setFont(plus.getFont().deriveFont(Font.BOLD, 14f));
         plus.setForeground(new Color(70, 100, 160));
         plus.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        plus.setToolTipText("Créer une nouvelle catégorie");
         plus.addMouseListener(new MouseAdapter() {
             @Override public void mouseClicked(MouseEvent e) { createNewCategory(); }
         });
         return plus;
     }
 
-    // ── Création d'une nouvelle catégorie ────────────────────────────────────
+    // ── Catégories ───────────────────────────────────────────────────────────
     private void createNewCategory() {
         String name = JOptionPane.showInputDialog(this,
-            "Nom de la nouvelle catégorie :", "Nouvelle catégorie",
-            JOptionPane.PLAIN_MESSAGE);
+            "Nom de la nouvelle categorie :", "Nouvelle categorie", JOptionPane.PLAIN_MESSAGE);
         if (name == null || name.trim().isEmpty()) return;
         name = name.trim();
-
-        // Vérifier doublon
         for (String cat : productController.getAllCategories()) {
             if (cat.equalsIgnoreCase(name)) {
-                JOptionPane.showMessageDialog(this,
-                    "La catégorie « " + name + " » existe déjà.",
+                JOptionPane.showMessageDialog(this, "La categorie existe deja.",
                     "Doublon", JOptionPane.WARNING_MESSAGE);
                 return;
             }
         }
-
         productController.addCategory(name);
         String finalName = name;
         SwingUtilities.invokeLater(() -> {
             rebuildTabs();
-            // Sélectionner le nouvel onglet
             for (int i = 0; i < categoryTabs.getTabCount(); i++) {
                 if (finalName.equals(categoryTabs.getTitleAt(i))) {
-                    categoryTabs.setSelectedIndex(i);
-                    break;
+                    categoryTabs.setSelectedIndex(i); break;
                 }
             }
         });
     }
 
-    // ── Menu contextuel onglet ───────────────────────────────────────────────
     private void showTabContextMenu(MouseEvent e, int tabIndex) {
         String tabTitle = categoryTabs.getTitleAt(tabIndex);
         JPopupMenu menu = new JPopupMenu();
 
-        JMenuItem miRename = new JMenuItem("✏️ Renommer « " + tabTitle + " »");
+        JMenuItem miRename = new JMenuItem("Renommer");
         miRename.addActionListener(ev -> {
-            String newName = JOptionPane.showInputDialog(this,
-                "Nouveau nom :", tabTitle);
+            String newName = JOptionPane.showInputDialog(this, "Nouveau nom :", tabTitle);
             if (newName != null && !newName.trim().isEmpty()) {
                 productController.renameCategory(tabTitle, newName.trim());
                 rebuildTabs();
             }
         });
 
-        JMenuItem miDelete = new JMenuItem("🗑 Supprimer « " + tabTitle + " »");
+        JMenuItem miDelete = new JMenuItem("Supprimer");
         miDelete.setForeground(new Color(178, 34, 34));
         miDelete.addActionListener(ev -> {
             long count = productController.getAllProducts().stream()
                 .filter(p -> tabTitle.equals(p.getCategory())).count();
             String msg = count > 0
-                ? "Supprimer la catégorie « " + tabTitle + " » ?\n"
-                  + count + " produit(s) seront déplacés dans « Non classé »."
-                : "Supprimer la catégorie « " + tabTitle + " » ?";
+                ? "Supprimer la categorie ? " + count + " produit(s) seront deplaces."
+                : "Supprimer la categorie ?";
             if (JOptionPane.showConfirmDialog(this, msg, "Confirmation",
-                    JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE)
-                    == JOptionPane.YES_OPTION) {
+                    JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) == JOptionPane.YES_OPTION) {
                 productController.deleteCategory(tabTitle);
                 rebuildTabs();
             }
         });
 
-        menu.add(miRename);
-        menu.addSeparator();
-        menu.add(miDelete);
+        menu.add(miRename); menu.addSeparator(); menu.add(miDelete);
         menu.show(categoryTabs, e.getX(), e.getY());
     }
 
-    // ── Remplissage du tableau ───────────────────────────────────────────────
+    // ── Remplissage tableau ──────────────────────────────────────────────────
     private void fillTable(DefaultTableModel model, String categoryFilter) {
         model.setRowCount(0);
-        List<Product> products = productController.getAllProducts();
-        for (Product p : products) {
+        for (Product p : productController.getAllProducts()) {
             if (categoryFilter == null || categoryFilter.equals(p.getCategory())) {
                 model.addRow(new Object[]{
                     p.getId(), p.getReference(), p.getName(), p.getCategory(),
-                    p.getQuantity(), p.getMinQuantity(), p.getPrice(), p.getStatus()
+                    p.getQuantity(), p.getMinQuantity(), p.getStorageLocation(), p.getStatus()
                 });
             }
         }
     }
 
-    // ── Refresh ─────────────────────────────────────────────────────────────
+    // ── Refresh ──────────────────────────────────────────────────────────────
     public void refreshCurrentTab() {
         JPanel panel = getCurrentTabPanel();
         if (panel == null) return;
@@ -350,35 +284,32 @@ public class InventoryPanel extends JPanel {
     }
 
     // ── Dialogues ────────────────────────────────────────────────────────────
-    private void openProductDialog(Product product, String categoryFilter, JTextField search) {
+    private void openProductDialog(Product product) {
         Window w = SwingUtilities.getWindowAncestor(this);
         ProductDialog dlg = new ProductDialog((JFrame) w, productController, product);
         dlg.setVisible(true);
-        if (dlg.isSaved()) {
-            rebuildTabs();
-        }
+        if (dlg.isSaved()) rebuildTabs();
     }
 
-    private void openMovementDialog(Product product, JTextField search) {
+    private void openMovementDialog(Product product) {
         Window w = SwingUtilities.getWindowAncestor(this);
         MovementDialog dlg = new MovementDialog((JFrame) w, productController, product);
         dlg.setVisible(true);
         if (dlg.isSaved()) refreshCurrentTab();
     }
 
-    private void deleteSelectedProduct(JTextField search) {
-        Product p = getSelectedProductFromCurrentTab();
+    private void deleteSelectedProduct() {
+        Product p = getSelectedProduct();
         if (p == null) return;
-        int c = JOptionPane.showConfirmDialog(this,
-            "Supprimer « " + p.getName() + " » ?",
-            "Confirmation", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-        if (c == JOptionPane.YES_OPTION) {
+        if (JOptionPane.showConfirmDialog(this, "Supprimer " + p.getName() + " ?",
+                "Confirmation", JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE) == JOptionPane.YES_OPTION) {
             productController.deleteProduct(p.getId());
             refreshCurrentTab();
         }
     }
 
-    // ── Utilitaires ─────────────────────────────────────────────────────────
+    // ── Utilitaires ──────────────────────────────────────────────────────────
     private JPanel getCurrentTabPanel() {
         int idx = categoryTabs.getSelectedIndex();
         if (idx < 0 || idx >= categoryTabs.getTabCount() - 1) return null;
@@ -395,24 +326,22 @@ public class InventoryPanel extends JPanel {
     private void restoreTab(String title) {
         for (int i = 0; i < categoryTabs.getTabCount(); i++) {
             if (categoryTabs.getTitleAt(i).equals(title)) {
-                categoryTabs.setSelectedIndex(i);
-                return;
+                categoryTabs.setSelectedIndex(i); return;
             }
         }
         categoryTabs.setSelectedIndex(0);
     }
 
-    private Product getSelectedProductFromCurrentTab() {
+    private Product getSelectedProduct() {
         JPanel panel = getCurrentTabPanel();
         if (panel == null) return null;
         JTable table = (JTable) panel.getClientProperty("table");
         DefaultTableModel model = (DefaultTableModel) panel.getClientProperty("model");
         if (table == null || model == null) return null;
-
         int row = table.getSelectedRow();
         if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Veuillez sélectionner un produit.",
-                "Aucune sélection", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Veuillez selectionner un produit.",
+                "Aucune selection", JOptionPane.INFORMATION_MESSAGE);
             return null;
         }
         int id = (int) model.getValueAt(table.convertRowIndexToModel(row), 0);
@@ -421,12 +350,8 @@ public class InventoryPanel extends JPanel {
 
     private JButton btn(String label, Color bg) {
         JButton b = new JButton(label);
-        b.setOpaque(true);
-        b.setContentAreaFilled(true);
-        b.setBorderPainted(false);
-        b.setBackground(bg);
-        b.setForeground(Color.WHITE);
-        b.setFocusPainted(false);
+        b.setOpaque(true); b.setContentAreaFilled(true); b.setBorderPainted(false);
+        b.setBackground(bg); b.setForeground(Color.WHITE); b.setFocusPainted(false);
         b.setFont(b.getFont().deriveFont(Font.BOLD, 12f));
         b.setBorder(BorderFactory.createEmptyBorder(6, 14, 6, 14));
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));

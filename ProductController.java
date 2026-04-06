@@ -2,35 +2,70 @@ package com.inventaire;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class ProductController {
 
     private final List<Product>  products   = new ArrayList<>();
     private final List<Movement> movements  = new ArrayList<>();
-    private final List<String>   categories = new ArrayList<>(); // ordre personnalisé
+    private final List<String>   categories = new ArrayList<>();
 
     private int nextProductId  = 1;
     private int nextMovementId = 1;
 
-    public ProductController() {
-        // Catégories par défaut
+    private AppController appController;
+    public void setAppController(AppController ac) { this.appController = ac; }
+    private void save() { if (appController != null) appController.saveData(); }
+
+    // ── Données de démo ──────────────────────────────────────────────────────
+    public void loadDefaults() {
         categories.add("Fournitures");
         categories.add("Informatique");
         categories.add("Papeterie");
 
-        // Produits de démonstration
-        addProduct(new Product(0, "REF-001", "Stylos Bic",       "Fournitures", 150, 20, 0.50,  Product.STATUS_ACTIVE));
-        addProduct(new Product(0, "REF-002", "Ramette A4",       "Papeterie",    40, 10, 4.99,  Product.STATUS_ACTIVE));
-        addProduct(new Product(0, "REF-003", "Clé USB 32 Go",    "Informatique",  8,  5, 12.90, Product.STATUS_ACTIVE));
-        addProduct(new Product(0, "REF-004", "Agrafeuse",        "Fournitures",   3,  5, 8.50,  Product.STATUS_ACTIVE));
-        addProduct(new Product(0, "REF-005", "Toner imprimante", "Informatique",  0,  2, 45.00, Product.STATUS_INACTIVE));
+        addProduct(new Product(0, generateNextReference(), "Stylos Bic",      "Fournitures",  150, 20, "Etagere A1", Product.STATUS_ACTIVE));
+        addProduct(new Product(0, generateNextReference(), "Ramette A4",       "Papeterie",     40, 10, "Etagere B2", Product.STATUS_ACTIVE));
+        addProduct(new Product(0, generateNextReference(), "Cle USB 32 Go",    "Informatique",   8,  5, "Armoire 1",  Product.STATUS_ACTIVE));
+        addProduct(new Product(0, generateNextReference(), "Agrafeuse",        "Fournitures",    3,  5, "Etagere A3", Product.STATUS_ACTIVE));
+        addProduct(new Product(0, generateNextReference(), "Toner imprimante", "Informatique",   0,  2, "Reserve",    Product.STATUS_INACTIVE));
     }
 
-    // ── Produits ─────────────────────────────────────────────────────────────
-    public List<Product> getAllProducts() {
-        return new ArrayList<>(products);
+    // ── Chargement JSON (sans save) ──────────────────────────────────────────
+    public void clearAll() {
+        products.clear(); movements.clear(); categories.clear();
+        nextProductId = 1; nextMovementId = 1;
     }
+
+    public void loadProduct(Product p) {
+        products.add(p);
+        if (p.getId() >= nextProductId) nextProductId = p.getId() + 1;
+    }
+
+    public void loadMovement(Movement m) {
+        movements.add(m);
+        if (m.getId() >= nextMovementId) nextMovementId = m.getId() + 1;
+    }
+
+    // ── Référence auto unique ────────────────────────────────────────────────
+    public String generateNextReference() {
+        int max = 0;
+        for (Product p : products) {
+            String ref = p.getReference();
+            if (ref != null && ref.startsWith("REF-")) {
+                try { int n = Integer.parseInt(ref.substring(4)); if (n > max) max = n; }
+                catch (NumberFormatException ignored) {}
+            }
+        }
+        int next = max + 1;
+        while (referenceExists("REF-" + String.format("%03d", next))) next++;
+        return "REF-" + String.format("%03d", next);
+    }
+
+    public boolean referenceExists(String ref) {
+        return products.stream().anyMatch(p -> ref.equalsIgnoreCase(p.getReference()));
+    }
+
+    // ── CRUD Produits ────────────────────────────────────────────────────────
+    public List<Product> getAllProducts() { return new ArrayList<>(products); }
 
     public Product getProductById(int id) {
         return products.stream().filter(p -> p.getId() == id).findFirst().orElse(null);
@@ -39,62 +74,52 @@ public class ProductController {
     public void addProduct(Product p) {
         p.setId(nextProductId++);
         products.add(p);
-        // Ajouter la catégorie si nouvelle
         if (p.getCategory() != null && !p.getCategory().isBlank()
-                && !categories.contains(p.getCategory())) {
+                && !categories.contains(p.getCategory()))
             categories.add(p.getCategory());
-        }
+        save();
     }
 
     public void updateProduct(Product updated) {
         for (int i = 0; i < products.size(); i++) {
             if (products.get(i).getId() == updated.getId()) {
                 products.set(i, updated);
-                // Ajouter la catégorie si nouvelle
                 if (updated.getCategory() != null && !updated.getCategory().isBlank()
-                        && !categories.contains(updated.getCategory())) {
+                        && !categories.contains(updated.getCategory()))
                     categories.add(updated.getCategory());
-                }
-                return;
+                save(); return;
             }
         }
     }
 
     public void deleteProduct(int id) {
         products.removeIf(p -> p.getId() == id);
+        save();
     }
 
     // ── Catégories ───────────────────────────────────────────────────────────
-    public List<String> getAllCategories() {
-        return new ArrayList<>(categories);
-    }
+    public List<String> getAllCategories() { return new ArrayList<>(categories); }
 
     public void addCategory(String name) {
-        if (!categories.contains(name)) {
-            categories.add(name);
-        }
+        if (!categories.contains(name)) { categories.add(name); save(); }
     }
 
     public void renameCategory(String oldName, String newName) {
         int idx = categories.indexOf(oldName);
         if (idx >= 0) categories.set(idx, newName);
-        // Mettre à jour tous les produits de cette catégorie
-        products.stream()
-            .filter(p -> oldName.equals(p.getCategory()))
-            .forEach(p -> p.setCategory(newName));
+        products.stream().filter(p -> oldName.equals(p.getCategory()))
+                         .forEach(p -> p.setCategory(newName));
+        save();
     }
 
     public void deleteCategory(String name) {
         categories.remove(name);
-        // Déplacer les produits vers "Non classé"
-        products.stream()
-            .filter(p -> name.equals(p.getCategory()))
-            .forEach(p -> p.setCategory("Non classé"));
-        // Ajouter "Non classé" si besoin
-        if (products.stream().anyMatch(p -> "Non classé".equals(p.getCategory()))
-                && !categories.contains("Non classé")) {
-            categories.add(0, "Non classé");
-        }
+        products.stream().filter(p -> name.equals(p.getCategory()))
+                         .forEach(p -> p.setCategory("Non classe"));
+        if (products.stream().anyMatch(p -> "Non classe".equals(p.getCategory()))
+                && !categories.contains("Non classe"))
+            categories.add(0, "Non classe");
+        save();
     }
 
     // ── Mouvements ───────────────────────────────────────────────────────────
@@ -110,9 +135,8 @@ public class ProductController {
             p.setQuantity(Math.max(0, newQty));
         }
         movements.add(0, m);
+        save();
     }
 
-    public List<Movement> getAllMovements() {
-        return new ArrayList<>(movements);
-    }
+    public List<Movement> getAllMovements() { return new ArrayList<>(movements); }
 }
